@@ -8,7 +8,6 @@ var serviceUUIDs = ["8909c3d2-759d-4a03-81a7-3764b53c4f41"];
 
 console.log("Starting bleno...");
 
-
 bleno.on("stateChange", state => {
     console.log('on -> stateChange: ' + state);
 
