@@ -3,13 +3,13 @@ var bleno = require('bleno');
 
 var BlenoCharacteristic = bleno.Characteristic;
 
-var mactivCharacteristicUUID = 'ab0a';
+var mactivCharacteristicUUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
 var mactivCharacteristicProperties = ['read', 'write', 'notify'];
 
-var MactivCharacteristic = function() {
+var MactivCharacteristic = function () {
     MactivCharacteristic.super_.call(this, {
         uuid: mactivCharacteristicUUID,
-        properties: ['read', 'write', 'notify'],
+        properties: mactivCharacteristicProperties,
     });
     this._value = new Buffer(0);
     this._updateValueCallback = null;
@@ -19,22 +19,36 @@ module.exports = MactivCharacteristic;
 
 MactivCharacteristic.prototype.onReadRequest = function (offset, callback) {
     console.log('Mactiv onReadRequest');
-    var data = new Buffer(1);
-    data.writeUInt8(1, 0);
+
+    var encoder = new util.TextEncoder('utf-8');
+    var hexVal = encoder.encode("MactivBox");
+    var data = new Buffer(hexVal);
+    // data.writeUInt8(1, 0);
     callback(this.RESULT_SUCCESS, data);
 };
 
-MactivCharacteristic.prototype.onWriteRequest = function(data, offset, withoutResponse, callback) {
+MactivCharacteristic.prototype.onWriteRequest = function (data, offset, withoutResponse, callback) {
+    console.log('Mactiv - onWriteRequest');
+    
     this._value = data;
-    console.log('Mactiv - onWriteRequest: value = ' +       this._value.toString('hex'));
-    console.log(typeof data);
+    
+    var text = this._value.toString();
+    var ssid = text.split(', ')[0];
+    var pass = text.split(', ')[1];
+   
+    console.log('Value:' + text);
+    console.log('SSID: ' + ssid);
+    console.log('Pass: ' + pass);
+
+    //CONNECT TO WIFI
+    
     callback(this.RESULT_SUCCESS);
 };
 
 var isSubscribed = false
 var notifyInterval = 5 //seconds
 function delayedNotification(callback) {
-    setTimeout(function() { 
+    setTimeout(function () {
         if (isSubscribed) {
             var data = Buffer(3);
             var now = new Date();
@@ -47,14 +61,14 @@ function delayedNotification(callback) {
     }, notifyInterval * 1000);
 }
 
-MactivCharacteristic.prototype.onSubscribe = function(maxValueSize, updateValueCallback) {
+MactivCharacteristic.prototype.onSubscribe = function (maxValueSize, updateValueCallback) {
     console.log('MactivCharacteristic - onSubscribe');
-    isSubscribed = true;
+    isSubscribed = true; 
     delayedNotification(updateValueCallback);
     this._updateValueCallback = updateValueCallback;
 };
 
-MactivCharacteristic.prototype.onUnsubscribe = function() {
+MactivCharacteristic.prototype.onUnsubscribe = function () {
     console.log('CustomCharacteristic - onUnsubscribe');
     isSubscribed = false;
     this._updateValueCallback = null;
