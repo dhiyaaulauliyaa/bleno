@@ -1,0 +1,24 @@
+{
+  "name": "bleno",
+  "version": "1.0.0",
+  "description": "bleno test",
+  "main": "service.js",
+  "dependencies": {
+    "bleno": "^0.5.0",
+    "rpi-wifi-connection": "^1.0.17"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dhiyaaulauliyaa/bleno.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dhiyaaulauliyaa/bleno/issues"
+  },
+  "homepage": "https://github.com/dhiyaaulauliyaa/bleno#readme"
+}
