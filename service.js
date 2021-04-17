@@ -3,7 +3,7 @@ var bleno = require('bleno') ;
 var BlenoPrimaryService = bleno.PrimaryService;
 var MactivCharacteristic = require('./characteristic');
 
-var name = 'MactivBox';
+var name = 'AL20-0001-TEST';
 var serviceUUIDs = ["8909c3d2-759d-4a03-81a7-3764b53c4f41"];
 
 console.log("Starting bleno...");
