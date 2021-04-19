@@ -1,15 +1,17 @@
 var util = require('util');
-const Axios = require('axios');
 var bleno = require('bleno');
 var Wifi = require('rpi-wifi-connection');
 var wifi = new Wifi();
+const Fs = require('fs');
+const Path = require('path');
+const qs = require('qs');
 
 var BlenoCharacteristic = bleno.Characteristic;
 
 var mactivCharacteristicUUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
 var mactivCharacteristicProperties = ['read', 'write', 'notify'];
 var processState = 1;
-var ssid = '';
+var ssid = 'AL20-0001-TEST';
 var pass = '';
 
 var MactivCharacteristic = function () {
@@ -78,7 +80,8 @@ async function startSync() {
 
 async function checkInternetConnection() {
     try {
-        const response = await Axios.post('https://mactivbox.com/api/');
+	const axios = require('axios');
+        const response = await axios.post('https://mactivbox.com/api/');
         return true;
     } catch (e) {
         if (e.response.status == 404) {
@@ -89,26 +92,26 @@ async function checkInternetConnection() {
     return false;
 }
 
-function downloadFile() {
+async function downloadFile() {
     try {
         const url = 'https://mactivbox.com/api/mactivBox/syncbypass';
-        const path = Path.resolve(__dirname, 'zip', 'response.zip');
+        const path = Path.resolve(__dirname, 'response.zip');
         const writer = Fs.createWriteStream(path);
-        const response = await Axios({
-            url,
-            method: 'POST',
-            responseType: 'stream',
-            headers: { 'content-type': 'application/json' },
-            data: {
-                serialNumber: ssid,
-                userId: 4,
-                force: 1,
-                bypass: true,
-            }
-        });
+        const axios = require('axios');
+	const data = {
+	   'serialNumber': 'AL20-0001-TEST',
+	   'userId': 4,
+	   'force': 1,
+	   'bypass': true,
+	}
+        const response = await axios.post(url, qs.stringify(data), {
+	   responseType: 'stream',
+	   headers: { 'content-type': 'application/x-www-form-urlencoded' }
+	});
 
         response.data.pipe(writer);
         writer.on('finish', () => {
+	    console.log('success');
             processState = 4;
             setTimeout(function () { processState = 5; }, 2000);
         })
@@ -117,7 +120,8 @@ function downloadFile() {
             processState = 13;
         })
     } catch (e) {
-        console.log('Error: ' + e);
+        console.log(e);
+	console.log(e.response.data);
     }
 }
 
