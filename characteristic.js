@@ -1,10 +1,15 @@
 var util = require('util');
 var bleno = require('bleno');
+var Wifi = require('rpi-wifi-connection');
+var wifi = new Wifi();
 
 var BlenoCharacteristic = bleno.Characteristic;
 
 var mactivCharacteristicUUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
 var mactivCharacteristicProperties = ['read', 'write', 'notify'];
+var processState = 1;
+var ssid = '';
+var pass = '';
 
 var MactivCharacteristic = function () {
     MactivCharacteristic.super_.call(this, {
@@ -21,27 +26,49 @@ MactivCharacteristic.prototype.onReadRequest = function (offset, callback) {
     console.log('Mactiv onReadRequest');
 
     var encoder = new util.TextEncoder('utf-8');
-    var hexVal = encoder.encode("MactivBox");
-    var data = new Buffer(hexVal);
+    var hexVal = encoder.encode(processState.toString());
+    var data = new Buffer.from(hexVal);
     // data.writeUInt8(1, 0);
     callback(this.RESULT_SUCCESS, data);
 };
 
-MactivCharacteristic.prototype.onWriteRequest = function (data, offset, withoutResponse, callback) {
+MactivCharacteristic.prototype.onWriteRequest = async function (data, offset, withoutResponse, callback) {
     console.log('Mactiv - onWriteRequest');
     
     this._value = data;
     
     var text = this._value.toString();
-    var ssid = text.split(', ')[0];
-    var pass = text.split(', ')[1];
-   
-    console.log('Value:' + text);
-    console.log('SSID: ' + ssid);
-    console.log('Pass: ' + pass);
-
-    //CONNECT TO WIFI
-    
+    var method = text.split(', ')[0];
+    console.log('Value: ' + text);
+    console.log('Method: ' + ssid);
+    if(method == "2") {
+	processState = 2;
+	ssid = text.split(', ')[1];
+	pass = text.split(', ')[2];
+	console.log('SSID: ' + ssid);
+	console.log('Pass: ' + pass);
+	//CONNECT TO WIFI
+	var connected = await wifi.getState();
+	if (connected) {
+		// TODO: check connection
+		processState = 3;
+		console.log('Connected to network.');
+		setTimeout(function () { processState = 4; }, 5000);
+		setTimeout(function () { processState = 5; }, 8000);
+	} else {
+		wifi.connect({ssid:ssid, psk: pass}).then(() => {
+			// TODO: check connection
+			processState = 3;
+			console.log('Connected to network.');
+			setTimeout(function () { processState = 4; }, 5000);
+			setTimeout(function () { processState = 5; }, 8000);
+		}).catch((error) => {
+			// Cant connect to WiFi
+			console.log(error);
+			processState = 11;
+		});
+	}
+    }
     callback(this.RESULT_SUCCESS);
 };
 
