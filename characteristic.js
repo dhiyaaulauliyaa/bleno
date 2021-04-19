@@ -1,4 +1,5 @@
 var util = require('util');
+const Axios = require('axios');
 var bleno = require('bleno');
 var Wifi = require('rpi-wifi-connection');
 var wifi = new Wifi();
@@ -27,6 +28,7 @@ MactivCharacteristic.prototype.onReadRequest = function (offset, callback) {
 
     var encoder = new util.TextEncoder('utf-8');
     var hexVal = encoder.encode(processState.toString());
+    console.log('ProcessState: ' + processState.toString());
     var data = new Buffer.from(hexVal);
     // data.writeUInt8(1, 0);
     callback(this.RESULT_SUCCESS, data);
@@ -34,43 +36,90 @@ MactivCharacteristic.prototype.onReadRequest = function (offset, callback) {
 
 MactivCharacteristic.prototype.onWriteRequest = async function (data, offset, withoutResponse, callback) {
     console.log('Mactiv - onWriteRequest');
-    
     this._value = data;
-    
     var text = this._value.toString();
     var method = text.split(', ')[0];
     console.log('Value: ' + text);
-    console.log('Method: ' + ssid);
-    if(method == "2") {
-	processState = 2;
-	ssid = text.split(', ')[1];
-	pass = text.split(', ')[2];
-	console.log('SSID: ' + ssid);
-	console.log('Pass: ' + pass);
-	//CONNECT TO WIFI
-	var connected = await wifi.getState();
-	if (connected) {
-		// TODO: check connection
-		processState = 3;
-		console.log('Connected to network.');
-		setTimeout(function () { processState = 4; }, 5000);
-		setTimeout(function () { processState = 5; }, 8000);
-	} else {
-		wifi.connect({ssid:ssid, psk: pass}).then(() => {
-			// TODO: check connection
-			processState = 3;
-			console.log('Connected to network.');
-			setTimeout(function () { processState = 4; }, 5000);
-			setTimeout(function () { processState = 5; }, 8000);
-		}).catch((error) => {
-			// Cant connect to WiFi
-			console.log(error);
-			processState = 11;
-		});
-	}
+    console.log('Method: ' + method);
+    if (method == "2") {
+        processState = 2;
+        ssid = text.split(', ')[1];
+        pass = text.split(', ')[2];
+        console.log('SSID: ' + ssid);
+        console.log('Pass: ' + pass);
+        //CONNECT TO WIFI
+        var connected = await wifi.getState();
+        if (connected) {
+            startSync();
+        } else {
+            wifi.connect({ ssid: ssid, psk: pass }).then(() => {
+                startSync();
+            }).catch((error) => {
+                // Can't connect to WiFi
+                console.log("Error: Can't connect to WiFi. " + error);
+                processState = 11;
+            });
+        }
     }
     callback(this.RESULT_SUCCESS);
 };
+
+async function startSync() {
+    const internetAvailable = await checkInternetConnection();
+    if (internetAvailable) {
+        processState = 3;
+        console.log('Connected to network.');
+        downloadFile();
+    } else {
+        console.log('Error: No internet connection.');
+        processState = 12;
+    }
+}
+
+async function checkInternetConnection() {
+    try {
+        const response = await Axios.post('https://mactivbox.com/api/');
+        return true;
+    } catch (e) {
+        if (e.response.status == 404) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function downloadFile() {
+    try {
+        const url = 'https://mactivbox.com/api/mactivBox/syncbypass';
+        const path = Path.resolve(__dirname, 'zip', 'response.zip');
+        const writer = Fs.createWriteStream(path);
+        const response = await Axios({
+            url,
+            method: 'POST',
+            responseType: 'stream',
+            headers: { 'content-type': 'application/json' },
+            data: {
+                serialNumber: ssid,
+                userId: 4,
+                force: 1,
+                bypass: true,
+            }
+        });
+
+        response.data.pipe(writer);
+        writer.on('finish', () => {
+            processState = 4;
+            setTimeout(function () { processState = 5; }, 2000);
+        })
+        writer.on('error', () => {
+            console.log("Error: Can't download file.");
+            processState = 13;
+        })
+    } catch (e) {
+        console.log('Error: ' + e);
+    }
+}
 
 var isSubscribed = false
 var notifyInterval = 5 //seconds
@@ -90,7 +139,7 @@ function delayedNotification(callback) {
 
 MactivCharacteristic.prototype.onSubscribe = function (maxValueSize, updateValueCallback) {
     console.log('MactivCharacteristic - onSubscribe');
-    isSubscribed = true; 
+    isSubscribed = true;
     delayedNotification(updateValueCallback);
     this._updateValueCallback = updateValueCallback;
 };
@@ -101,3 +150,5 @@ MactivCharacteristic.prototype.onUnsubscribe = function () {
     this._updateValueCallback = null;
 };
 
+
+downloadFile();

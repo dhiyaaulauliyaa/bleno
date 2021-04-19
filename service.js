@@ -1,5 +1,5 @@
 
-var bleno = require('bleno') ; 
+var bleno = require('bleno');
 var BlenoPrimaryService = bleno.PrimaryService;
 var MactivCharacteristic = require('./characteristic');
 
@@ -15,7 +15,7 @@ bleno.on("stateChange", state => {
         console.log("Starting broadcast...");
 
         bleno.startAdvertising(name, serviceUUIDs, err => {
-            if(err) {
+            if (err) {
                 console.error(err);
             } else {
                 console.log(`Broadcasting as ${name} with UUID: ${serviceUUIDs}`);
@@ -24,12 +24,12 @@ bleno.on("stateChange", state => {
     } else {
         console.log("Stopping broadcast...");
         bleno.stopAdvertising();
-    }        
+    }
 });
 
-bleno.on('advertisingStart', function(error) {
+bleno.on('advertisingStart', function (error) {
     console.log('on -> advertisingStart: ' + (error ? 'error ' + error : 'success'));
-     if (!error) {
+    if (!error) {
         bleno.setServices([
             new BlenoPrimaryService({
                 uuid: serviceUUIDs[0],
